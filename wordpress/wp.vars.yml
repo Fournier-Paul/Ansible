@@ -1,0 +1,8 @@
+mysql_root_password: toor
+wordpress_source_url: https://wordpress.org/latest.tar.gz
+wordpress_download_file: /tmp/wp.zip
+wordpress_documentroot: /srv/www
+wordpress_db_user: wpuser
+wordpress_db_password: wppassword
+wordpress_db_name: wordpress
+wordpress_db_host: db.lxd

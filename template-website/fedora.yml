@@ -1,0 +1,35 @@
+---
+# Deploying an HTML5UP model on a Fedora host
+- name: Deploy Apache + template fractal
+  hosts: web
+  become: true
+  tasks:
+    - name: Install package httpd
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+        update_cache: true
+
+    - name: Start httpd
+      ansible.builtin.service:
+        name: httpd.service
+        state: started
+
+    - name: Download HTML5 UP fractal site template
+      ansible.builtin.get_url:
+        url: https://html5up.net/fractal/download
+        dest: /tmp/fractal.zip
+        mode: '0440'
+
+    - name: Install package unzip
+      ansible.builtin.dnf:
+        name:
+          - unzip
+        state: present
+
+    - name: Unarchive a file that is already on the remote machine
+      ansible.builtin.unarchive:
+        src: /tmp/fractal.zip
+        dest: /var/www/html
+        remote_src: true
+...

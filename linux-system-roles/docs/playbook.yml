@@ -1,0 +1,94 @@
+---
+# Deploying a Podman quadlet on a Fedora host with a Linux System Role.
+# [playbook/task/container] -> [kubefile] -> [playbook/role/container]
+- name: Deploy Podman + Kubefile
+  hosts: node1
+  become: true
+  vars:
+    podman_user: fedora
+    container_name: web1
+    container_state: started
+    container_port: 8000:80
+    container_image: docker.io/dontrebootme/microbot:v2
+  tasks:
+    - name: Install podman
+      tags:
+        - install
+      block:
+        - name: Installer paquet podman
+          ansible.builtin.dnf:
+            name:
+              - podman
+            state: present
+
+        - name: Remove shadow-utils
+          ansible.builtin.dnf:
+            name:
+              - shadow-utils
+            state: removed
+
+        - name: Remove shadow-utils
+          ansible.builtin.dnf:
+            name:
+              - shadow-utils
+            state: present
+
+    - name: Executer container "{{ container_name }}"
+      tags:
+        - container
+        - app
+      containers.podman.podman_container:
+        name: "{{ container_name }}"
+        state: "{{ container_state }}"
+        image: "{{ container_image }}"
+        ports:
+          - "{{ container_port }}"
+
+    - name: Export Kubefile
+      tags:
+        - kubefile
+      block:
+        - name: Generer Kubefile
+          register: kube_output
+          changed_when: kube_output.rc != 0
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              podman kube generate {{ container_name }} | tee /home/fedora/{{ container_name }}.kube.yml
+            chdir: /home/fedora/
+            executable: /bin/bash
+
+        - name: Telecharger Kubefile sur le control
+          ansible.builtin.fetch:
+            src: /home/fedora/{{ container_name }}.kube.yml
+            dest: kubes/{{ inventory_hostname }}/{{ container_name }}.kube.yml
+            flat: true
+          notify: Arreter container {{ container_name }}
+
+  handlers:
+    - name: Arreter container {{ container_name }}
+      become: true
+      become_user: "{{ podman_user }}"
+      containers.podman.podman_container:
+        name: "{{ container_name }}"
+        state: absent
+
+- name: Run nginx kubefile via LSR
+  hosts: node1
+  become: true
+  tags:
+    - pod
+  vars:
+    podman_user: fedora
+    container_name: web1
+    podman_create_host_directories: true
+    podman_kube_specs:
+      - state: started
+        run_as_user: fedora
+        run_as_group: fedora
+        kube_file_src: kubes/{{ inventory_hostname}}/{{ container_name }}.kube.yml
+        activate_systemd_unit: true
+
+  roles:
+    - fedora.linux_system_roles.podman
+...

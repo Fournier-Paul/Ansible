@@ -1,0 +1,35 @@
+---
+# Deploying an HTML5UP model on an Ubuntu host
+- name: Deploy Apache + template aerial
+  hosts: web
+  become: true
+  tasks:
+    - name: Install package apache2
+      ansible.builtin.apt:
+        name: apache2
+        state: present
+        update_cache: true
+
+    - name: Start apache2
+      ansible.builtin.service:
+        name: apache2.service
+        state: started
+
+    - name: Download HTML5 UP aerial site template
+      ansible.builtin.get_url:
+        url: https://html5up.net/aerial/download
+        dest: /tmp/aerial.zip
+        mode: '0440'
+
+    - name: Install package unzip
+      ansible.builtin.apt:
+        name:
+          - unzip
+        state: present
+
+    - name: Unarchive a file that is already on the remote machine
+      ansible.builtin.unarchive:
+        src: /tmp/aerial.zip
+        dest: /var/www/html
+        remote_src: true
+...
